@@ -1,0 +1,70 @@
+- hosts: localhost
+  tasks:
+    - name: create private folder
+      file:
+        state: directory
+        path: private
+  
+    - name: create certs folder 
+      file:
+        state: directory
+        path: certs
+
+    - name: generate ca.pem
+      command: openssl req -x509 -days 3650 -set_serial 0 -subj "/CN=etcd-ca" -extensions v3_ca -config openssl.conf -keyout private/ca-key.pem -out certs/ca.pem
+
+- hosts: all
+  become: yes
+  become_user: root
+  user: pi
+  tasks:
+    - name: copy openssl.conf
+      become: no
+      delegate_to: localhost
+      copy:
+        src: openssl.conf
+        dest: "{{ inventory_hostname }}-openssl.conf"
+
+    - name: add node info to openssl.conf
+      become: no
+      delegate_to: localhost
+      ini_file:
+        path: "{{ inventory_hostname }}-openssl.conf"
+        section: v3_req
+        option: subjectAltName
+        value: DNS:localhost,DNS:{{ inventory_hostname }},IP:{{ ansible_default_ipv4.address }},IP:127.0.0.1,IP:0:0:0:0:0:0:0:1
+        state: present
+
+    - name: generate peer certs
+      become: no
+      delegate_to: localhost
+      command: openssl req -x509 -subj "/CN={{ inventory_hostname }}" -extensions v3_req -config {{ inventory_hostname }}-openssl.conf -CA certs/ca.pem -CAkey private/ca-key.pem -keyout certs/{{ inventory_hostname }}-key.pem -out certs/{{ inventory_hostname }}.pem
+
+    - name: delete cert folder
+      file:
+        state: absent
+        path: /etc/etcd/pki
+
+    - name: create cert folder
+      file:
+        path: /etc/etcd/pki
+        state: directory
+        owner: root
+        group: root
+        mode: 0775
+
+    - name: copy ca.pem
+      copy:
+        src: certs/ca.pem
+        dest: /etc/etcd/pki
+
+    - name: copy etcd-key.pem
+      copy:
+        src: certs/{{ inventory_hostname }}-key.pem
+        dest: /etc/etcd/pki/etcd-key.pem
+
+    - name: copy etcd.pem
+      copy:
+        src: certs/{{ inventory_hostname }}.pem
+        dest: /etc/etcd/pki/etcd.pem
+

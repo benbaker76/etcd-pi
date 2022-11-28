@@ -1,0 +1,96 @@
+- hosts: all
+  become: yes
+  become_user: root
+  user: pi
+  tasks:
+    - name: stop etcd service
+      systemd:
+        state: stopped
+        name: etcd
+
+    - name: swap
+      replace:
+        destfile: /etc/dphys-swapfile
+        regexp: "^CONF_SWAPSIZE=.*"
+        replace: "CONF_SWAPSIZE=0"
+      ignore_errors: yes
+
+    - name: swapoff
+      command: 'dphys-swapfile swapoff'
+
+    - name: swap disable
+      systemd: enabled=no name=dphys-swapfile
+
+    - name: delete swap
+      file:
+        path: /var/swap
+        state: absent
+
+    - name: set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: add cp endpoint to hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }}"
+
+    - name: add nodes to hosts
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item }}$'
+        line: "{{ hostvars[item].ansible_host }} {{ item }}"
+        state: present
+      when: hostvars[item].ansible_host is defined
+      with_items: "{{ groups.all }}"
+
+    - name: install etcd and etcdctl
+      unarchive:
+        src: https://github.com/etcd-io/etcd/releases/download/v3.4.22/etcd-v3.4.22-linux-arm64.tar.gz
+        dest: /usr/local/bin
+        extra_opts:
+          - --strip=1
+          - --wildcards
+          - '*/etcd'
+          - '*/etcdctl'
+        remote_src: yes
+        owner: root
+        group: root        
+        mode: 0755
+
+    - name: set static ip
+      blockinfile:
+        path: /etc/dhcpcd.conf
+        block: |
+          interface {{ interface }}
+          static ip_address={{ ansible_default_ipv4.address }}/24
+          static routers={{ dns_server }}
+          static domain_name_servers={{ dns_server }}
+        create: true
+
+    - name: create etcd.service
+      template:
+        src: etcd-service.template
+        dest: /lib/systemd/system/etcd.service
+
+    - name: delete etcd data folder
+      file:
+        state: absent
+        path: "{{ data_dir }}"
+
+    - name: create etcd data folder
+      file:
+        path: "{{ data_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0775
+
+    - name: restart etcd service
+      systemd:
+        name: etcd
+        daemon_reload: yes
+        enabled: yes
+        state: restarted
+      ignore_errors: true
+

@@ -1,0 +1,35 @@
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/etcd-io/etcd
+After=network.target
+
+[Service]
+User=root
+Type=notify
+Environment="ETCD_UNSUPPORTED_ARCH=arm64"
+ExecStart=/usr/local/bin/etcd \
+  --name {{ inventory_hostname }} \
+  --data-dir={{ data_dir }} \
+  --cert-file={{ cert_file }} \
+  --key-file={{ cert_key }} \
+  --peer-cert-file={{ cert_file }} \
+  --peer-key-file={{ cert_key }} \
+  --trusted-ca-file={{ cacert_file }} \
+  --peer-trusted-ca-file={{ cacert_file }} \
+  --peer-client-cert-auth \
+  --client-cert-auth \
+  --initial-advertise-peer-urls https://{{ ansible_default_ipv4.address }}:2380 \
+  --listen-peer-urls https://{{ ansible_default_ipv4.address }}:2380 \
+  --advertise-client-urls https://{{ ansible_default_ipv4.address }}:2379 \
+  --listen-client-urls https://{{ ansible_default_ipv4.address }}:2379,https://127.0.0.1:2379 \
+  --initial-cluster-token {{ token }} \
+  --initial-cluster {{ cluster }} \
+  --initial-cluster-state {{ cluster_state }}
+  --auto-compaction-mode=revision
+  --auto-compaction-retention=1000
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=40000
+
+[Install]
+WantedBy=multi-user.target
