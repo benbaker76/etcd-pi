@@ -1,0 +1,22 @@
+- hosts: all
+  become: yes
+  become_user: root
+  user: pi
+  tasks:
+    - name: install go
+      unarchive:
+        src: https://go.dev/dl/go1.19.3.linux-arm64.tar.gz
+        dest: /usr/local
+        remote_src: yes
+        mode: 0755
+
+    - name: add go paths
+      become: yes
+      become_user: pi
+      blockinfile:
+        path: $HOME/.profile
+        block: |
+          PATH=$PATH:/usr/local/go/bin
+          GOPATH=$HOME/go
+        create: true
+
