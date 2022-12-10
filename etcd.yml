@@ -78,6 +78,19 @@
           static domain_name_servers={{ dns_server }}
         create: true
 
+    - name: add go paths
+      become: yes
+      become_user: pi
+      blockinfile:
+        path: $HOME/.profile
+        marker: "# {mark} etcd env"
+        block: |
+          export ETCDCTL_API=3
+          export ETCDCTL_CACERT={{ cacert_file }}
+          export ETCDCTL_CERT={{ cert_file }}
+          export ETCDCTL_KEY={{ cert_key }}
+        create: true
+
     - name: create etcd.service
       template:
         src: etcd-service.template
@@ -104,3 +117,5 @@
         state: restarted
       ignore_errors: true
 
+    - name: reboot pi
+      reboot:

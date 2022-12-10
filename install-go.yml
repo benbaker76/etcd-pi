@@ -24,8 +24,9 @@
       become_user: pi
       blockinfile:
         path: $HOME/.profile
+        marker: "# {mark} go path"
         block: |
-          PATH=$PATH:/usr/local/go/bin
-          GOPATH=$HOME/go
+          export PATH=$PATH:/usr/local/go/bin
+          export GOPATH=$HOME/go
         create: true
 
