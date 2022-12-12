@@ -74,8 +74,8 @@
         block: |
           interface {{ interface }}
           static ip_address={{ ansible_default_ipv4.address }}/24
-          static routers={{ dns_server }}
-          static domain_name_servers={{ dns_server }}
+          static routers={{ routers }}
+          static domain_name_servers={{ domain_name_servers }}
         create: true
 
     - name: add go paths
