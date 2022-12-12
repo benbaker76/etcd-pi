@@ -25,7 +25,7 @@ func main() {
 
   client, err := clientv3.New(clientv3.Config {
     TLS: tlsConf,
-    Endpoints: []string { "192.168.0.50:2379", "192.168.0.51:2379", "192.168.0.52:2379" },
+    Endpoints: []string { "etcd1.local:2379", "etcd2.local:2379", "etcd3.local:2379" },
     DialTimeout: 5 * time.Second,
   })
 
